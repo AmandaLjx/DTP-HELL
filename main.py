@@ -12,7 +12,9 @@ class FileOrigin(Enum):
 
 class FeaturesCompiler:
     def __init__(self, feature_folders_path='.'):
+        # Path to the folder containing all feature folders like 1. Mean air temperature
         self.feature_folders_path = feature_folders_path
+        # All features will be merged into this DataFrame
         self.df = pd.DataFrame(columns=["code", "year"])
 
     def country_name_to_alpha_3(self, country_name: str):
@@ -29,8 +31,10 @@ class FeaturesCompiler:
             if feature_name in self.df.columns:
                 raise Exception(
                     "Feature already exists in DataFrame:", feature_name)
+            # Drop columns that start with 'Unnamed:'
             if file_origin == FileOrigin.DATA_WORLD_BANK:
                 df = pd.read_csv(file_path)
+                df = df.loc[:, ~df.columns.str.contains('Unnamed: 68')]
                 df.drop(columns=["Country Name", "Indicator Name",
                         "Indicator Code"], inplace=True)
                 df = pd.melt(df, id_vars=[
@@ -41,6 +45,7 @@ class FeaturesCompiler:
                     self.df, df, on=['code', 'year'], how='outer')
             elif file_origin == FileOrigin.CLIMATE_KNOWLEDGE_PORTAL:
                 df = pd.read_excel(file_path)
+                df = df.loc[:, ~df.columns.str.contains('Unnamed: 68')]
                 df.drop(columns=["name"], inplace=True)
                 df = pd.melt(df, id_vars=[
                              "code"], value_vars=df.columns[1:], var_name="year", value_name=feature_name)
@@ -49,13 +54,13 @@ class FeaturesCompiler:
                     self.df, df, on=['code', 'year'], how='outer')
             elif file_origin == FileOrigin.FAO:
                 df = pd.read_csv(file_path)
-                print(df)
+                df = df.loc[:, ~df.columns.str.contains('Unnamed: 68')]
                 df["Area"] = df["Area"].apply(
                     self.country_name_to_alpha_3)
                 df.rename(
                     columns={"Area": "code", "Year": "year", "Value": feature_name}, inplace=True)
-                df.drop(columns=["Area Code (M49)", "Domain",
-                                 "Domain Code", "Element Code", "Element", "Item Code", "Item", "Year Code", "Unit", "Flag", "Flag Description"], inplace=True)
+                df.drop(columns=["Area Code (M49)", "Domain", "Months Code", "Months",
+                                 "Domain Code", "Element Code", "Element", "Item Code", "Item", "Year Code", "Unit", "Flag", "Flag Description"], inplace=True, errors="ignore")
                 df["year"] = df["year"].apply(lambda x: int(x))
                 self.df = pd.merge(
                     self.df, df, on=["code", "year"], how='outer')
@@ -87,6 +92,9 @@ class FeaturesCompiler:
         for feature_folder in os.listdir(self.feature_folders_path):
             feature_folder_path = os.path.join(
                 self.feature_folders_path, feature_folder)
+            if feature_folder.startswith('.'):
+                print(feature_folder, "is a hidden folder")
+                continue
             if not os.path.isdir(feature_folder_path):
                 continue
             print("Feature folder located:", feature_folder_path)
