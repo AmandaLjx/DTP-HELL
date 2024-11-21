@@ -16,15 +16,17 @@ class FeaturesCompiler:
         self.feature_folders_path = feature_folders_path
         # All features will be merged into this DataFrame
         self.df = pd.DataFrame(columns=["code", "year"])
+        self.cannot_convert_to_alpha_3 = {}
 
     def country_name_to_alpha_3(self, country_name: str):
         try:
             alpha_3 = pc.countries.lookup(country_name).alpha_3
             return alpha_3
         except LookupError:
+            self.cannot_convert_to_alpha_3[country_name] = True
             return "ZZZZZ"
 
-    def read_feature(self, file_path: str, file_origin: FileOrigin):
+    def read_feature(self, feature_name: str, file_path: str, file_origin: FileOrigin):
         try:
             df = None
             feature_name = os.path.basename(os.path.dirname(file_path))
@@ -92,23 +94,23 @@ class FeaturesCompiler:
         for feature_folder in os.listdir(self.feature_folders_path):
             feature_folder_path = os.path.join(
                 self.feature_folders_path, feature_folder)
-            if feature_folder.startswith('.'):
-                print(feature_folder, "is a hidden folder")
-                continue
-            if not os.path.isdir(feature_folder_path):
+            if feature_folder.startswith('.') or not os.path.isdir(feature_folder_path):
                 continue
             print("Feature folder located:", feature_folder_path)
             origin_url = self.find_origin_url(feature_folder_path)
             for feature in os.listdir(feature_folder_path):
                 if feature == "url.txt":
                     continue
+                feature_name = os.path.basename(feature_folder_path)
                 feature_path = os.path.join(feature_folder_path, feature)
-                self.read_feature(feature_path, origin_url)
+                self.read_feature(feature_name, feature_path, origin_url)
         self.df.dropna(inplace=True)
         print('Final DataFrame:', self.df)
         print('DataFrame columns:', self.df.columns)
+        print('Countries that could not be converted to alpha-3:',
+              self.cannot_convert_to_alpha_3)
         self.df.to_csv('features.csv', index=False)
 
 
-features_compiler = FeaturesCompiler()
+features_compiler = FeaturesCompiler(os.path.join(".", "features"))
 features_compiler.compile()
