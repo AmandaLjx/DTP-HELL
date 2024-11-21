@@ -109,7 +109,8 @@ class FeaturesCompiler:
         print('DataFrame columns:', self.df.columns)
         print('Countries that could not be converted to alpha-3:',
               self.cannot_convert_to_alpha_3)
-        self.df.to_csv('features.csv', index=False)
+        self.df.to_csv(os.path.join(self.feature_folders_path,
+                       "features.csv"), index=False)
 
 
 features_compiler = FeaturesCompiler(os.path.join(".", "features"))
