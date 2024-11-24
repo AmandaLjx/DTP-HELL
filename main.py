@@ -29,17 +29,19 @@ class FeaturesCompiler:
         # All features will be merged into this DataFrame
         self.df = pd.DataFrame(columns=["code", "year"])
         self.cannot_convert_to_alpha_3 = {}
+        self.country_name_to_alpha_3_map = {
+            "Ethiopia PDR": "ETH", "China, mainland": "CHN", "China, Taiwan Province of": "TWN"}
 
     def country_name_to_alpha_3(self, country_name: str):
         try:
             alpha_3 = pc.countries.lookup(country_name).alpha_3
             return alpha_3
         except LookupError:
-            if country_name == "Ethiopia PDR":
-                return "ETH"
-            else:
-                self.cannot_convert_to_alpha_3[country_name] = True
-                return "ZZZZZ"
+            alpha_3 = self.country_name_to_alpha_3_map.get(
+                country_name, "ZZZZZ")
+            if alpha_3 == "ZZZZZ":
+                self.cannot_convert_to_alpha_3[country_name] = 1
+            return alpha_3
 
     def alpha_3_to_country_name(self, alpha_3: str):
         try:
@@ -131,8 +133,10 @@ class FeaturesCompiler:
                 feature_name = os.path.basename(feature_folder_path)
                 feature_path = os.path.join(feature_folder_path, feature)
                 self.merge_feature(feature_name, feature_path, origin_url)
-                self.df.drop(self.df[~self.df["code"].isin(
-                    countries_to_save)].index, inplace=True)
+                self.df.drop(self.df[self.df["code"] ==
+                             "ZZZZZ"].index, inplace=True)
+                # self.df.drop(self.df[~self.df["code"].isin(
+                #     countries_to_save)].index, inplace=True)
 
         # Sort the columns
         sorted_columns = sorted(self.df.columns, key=lambda x: (0, x) if x in [
