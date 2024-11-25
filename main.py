@@ -86,7 +86,7 @@ class FeaturesCompiler:
                     self.country_name_to_alpha_3)
                 df.rename(
                     columns={"Area": "code", "Year": "year", "Value": feature_name}, inplace=True)
-                columns_to_drop = ["Area Code (M49)", "Domain", "Months Code", "Months", "Note",
+                columns_to_drop = ["Item Code (CPC)", "Area Code (M49)", "Domain", "Months Code", "Months", "Note",
                                    "Domain Code", "Element Code", "Element", "Item Code", "Item", "Year Code", "Unit", "Flag", "Flag Description"]
                 df.drop(columns=columns_to_drop,
                         inplace=True, errors='ignore', axis=1)
@@ -122,21 +122,30 @@ class FeaturesCompiler:
 
     def compile(self):
         countries_to_save = ["SOM", "ETH", "KEN", "SSD", "SDN"]
+        features_to_save = {"0. Crop yield (Wheat, tons)": True, "1. Mean air temperature": True,
+                            "5. Average precipitation (mm)": True,
+                            "7. Fertilizer consumption (kilograms per hectare of arable land)": True,
+                            "13. Population": True, "4. Agriculture land area (% of land area)": True}
 
         # Iterate over all feature folders to merge them into a single DataFrame
         feature_folder_paths = self.get_all_feature_folder_paths()
         for feature_folder_path in feature_folder_paths:
             origin_url = self.find_origin_url(feature_folder_path)
-            for feature in os.listdir(feature_folder_path):
-                if feature == "url.txt":
+            for feature_file in os.listdir(feature_folder_path):
+                if feature_file == "url.txt":
                     continue
                 feature_name = os.path.basename(feature_folder_path)
-                feature_path = os.path.join(feature_folder_path, feature)
+                if features_to_save.get(feature_name, False) == False:
+                    continue
+                feature_path = os.path.join(feature_folder_path, feature_file)
                 self.merge_feature(feature_name, feature_path, origin_url)
                 self.df.drop(self.df[self.df["code"] ==
                              "ZZZZZ"].index, inplace=True)
-                # self.df.drop(self.df[~self.df["code"].isin(
-                #     countries_to_save)].index, inplace=True)
+
+        # Clean the DataFrame
+        self.df.drop(self.df[~self.df["code"].isin(
+            countries_to_save)].index, inplace=True)
+        self.df.dropna(inplace=True)
 
         # Sort the columns
         sorted_columns = sorted(self.df.columns, key=lambda x: (0, x) if x in [
@@ -144,11 +153,13 @@ class FeaturesCompiler:
         self.df = self.df[sorted_columns]
 
         # Save the individual country features
-        features_csv_folder = os.path.join(".", "features_csv")
+        output_folder_path = os.path.join(".", "output")
         for country in countries_to_save:
             df = self.df.drop(self.df[self.df["code"] != country].index)
-            df.to_csv(os.path.join(features_csv_folder,
-                      f"{country}.csv"), index=False)
+            df.to_excel(os.path.join(output_folder_path,
+                                     f"{country}.xlsx"), index=False)
+            df.to_csv(os.path.join(output_folder_path,
+                                   f"{country}.csv"), index=False)
 
         # Save the aggregated features
         print('Aggregrated DataFrame shape:', self.df.shape)
@@ -157,8 +168,10 @@ class FeaturesCompiler:
                                         list(self.cannot_convert_to_alpha_3.keys())}", width=50)
         logger.debug(wrapped_message)
 
-        self.df.to_csv(os.path.join(features_csv_folder,
-                       "aggregrated.csv"), index=False)
+        self.df.to_excel(os.path.join(output_folder_path,
+                                      "aggregrated.xlsx"), index=False)
+        self.df.to_csv(os.path.join(output_folder_path,
+                                    "aggregrated.csv"), index=False)
 
 
 features_compiler = FeaturesCompiler()
