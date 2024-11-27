@@ -1,4 +1,2 @@
-code,year,"0. Crop yield (Wheat, tons)",1. Mean air temperature,4. Agriculture land area (% of land area),5. Average precipitation (mm),7. Fertilizer consumption (kilograms per hectare of arable land),13. Population
-SSD,2012,0.0,28.04,45.09662858,1222.29,0.000188061,10701604.0
-SSD,2013,0.0,28.06,45.04078775,1192.61,0.003669129,11106031.0
-SSD,2014,0.0,28.17,44.98494691,1186.52,0.006753037,11213284.0
+code,year,0. Crop production index,1. Mean air temperature,4. Agriculture land area (% of land area),5. Average precipitation (mm),7. Fertilizer consumption (kilograms per hectare of arable land),13. Population,17. Employment in agriculture (% of total employment) (modeled ILO estimate)
+SSD,2014,98.25,28.17,44.98494691,1186.52,0.006753037,11213284.0,60.16503728435

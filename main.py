@@ -20,6 +20,7 @@ class FileOrigin(Enum):
     DATA_WORLD_BANK = "https://data.worldbank.org/"
     CLIMATE_KNOWLEDGE_PORTAL = "https://climateknowledgeportal.worldbank.org/"
     FAO = "https://www.fao.org/"
+    DATABANK_WORLDBANK = "https://databank.worldbank.org/"
 
 
 class FeaturesCompiler:
@@ -31,6 +32,7 @@ class FeaturesCompiler:
         self.cannot_convert_to_alpha_3 = {}
         self.country_name_to_alpha_3_map = {
             "Ethiopia PDR": "ETH", "China, mainland": "CHN", "China, Taiwan Province of": "TWN"}
+        self.empty_country_count = 0
 
     def country_name_to_alpha_3(self, country_name: str):
         try:
@@ -93,6 +95,16 @@ class FeaturesCompiler:
                 df["year"] = df["year"].apply(lambda x: int(x))
                 self.df = pd.merge(
                     self.df, df, on=["code", "year"], how='outer')
+            elif file_origin == FileOrigin.DATABANK_WORLDBANK:
+                df = pd.read_csv(file_path)
+                df.rename(columns={"Country Code": "code"}, inplace=True)
+                df.drop(columns=["Country Name", "Series Code",
+                        "Series Name"], inplace=True)
+                df = pd.melt(df, id_vars=[
+                             "code"], value_vars=df.columns[1:], var_name="year", value_name=feature_name)
+                df["year"] = df["year"].apply(lambda x: int(x.split(" [")[0]))
+                self.df = pd.merge(
+                    self.df, df, on=['code', 'year'], how='outer')
             else:
                 raise Exception("Unknown file origin", file_path)
             print("Merge successful:", feature_name, file_path, file_origin)
@@ -114,6 +126,8 @@ class FeaturesCompiler:
             return FileOrigin.CLIMATE_KNOWLEDGE_PORTAL
         elif url.startswith(FileOrigin.FAO.value):
             return FileOrigin.FAO
+        elif url.startswith(FileOrigin.DATABANK_WORLDBANK.value):
+            return FileOrigin.DATABANK_WORLDBANK
         else:
             raise Exception("Unsupported origin URL", url)
 
@@ -121,11 +135,22 @@ class FeaturesCompiler:
         return [os.path.join(self.features_path, f) for f in os.listdir(self.features_path) if os.path.isdir(os.path.join(self.features_path, f))]
 
     def compile(self):
-        countries_to_save = ["SOM", "ETH", "KEN", "SSD", "SDN"]
-        features_to_save = {"0. Crop yield (Wheat, tons)": True, "1. Mean air temperature": True,
+        country_codes_to_save = [
+            "DZA", "AGO", "BEN", "BWA", "BFA", "BDI",
+            "CPV", "CMR", "CAF", "TCD", "COM",
+            "COG", "DJI", "EGY", "GNQ", "ERI",
+            "SWZ", "ETH", "GAB", "GMB", "GHA", "GIN",
+            "GNB", "KEN", "LSO", "LBR", "LBY", "MDG",
+            "MWI", "MLI", "MRT", "MUS", "MAR", "MOZ",
+            "NAM", "NER", "NGA", "RWA", "STP",
+            "SEN", "SYC", "SLE", "SOM", "ZAF",
+            "SSD", "SDN", "TZA", "TGO", "TUN", "UGA",
+            "ZMB", "ZWE"
+        ]
+        features_to_save = {"0. Crop production index": True, "1. Mean air temperature": True,
                             "5. Average precipitation (mm)": True,
                             "7. Fertilizer consumption (kilograms per hectare of arable land)": True,
-                            "13. Population": True, "4. Agriculture land area (% of land area)": True}
+                            "13. Population": True, "4. Agriculture land area (% of land area)": True, "17. Employment in agriculture (% of total employment) (modeled ILO estimate)": True}
 
         # Iterate over all feature folders to merge them into a single DataFrame
         feature_folder_paths = self.get_all_feature_folder_paths()
@@ -144,7 +169,7 @@ class FeaturesCompiler:
 
         # Clean the DataFrame
         self.df.drop(self.df[~self.df["code"].isin(
-            countries_to_save)].index, inplace=True)
+            country_codes_to_save)].index, inplace=True)
         self.df.dropna(inplace=True)
 
         # Sort the columns
@@ -154,12 +179,19 @@ class FeaturesCompiler:
 
         # Save the individual country features
         output_folder_path = os.path.join(".", "output")
-        for country in countries_to_save:
+        for country in country_codes_to_save:
             df = self.df.drop(self.df[self.df["code"] != country].index)
+            if df.empty:
+                logger.debug(f"Empty DataFrame for country: {
+                             self.alpha_3_to_country_name(country)}")
+                self.empty_country_count += 1
+                continue
             df.to_excel(os.path.join(output_folder_path,
                                      f"{country}.xlsx"), index=False)
             df.to_csv(os.path.join(output_folder_path,
                                    f"{country}.csv"), index=False)
+            self.df = self.df[self.df["year"] == 2014]
+        logger.debug(f"Empty country count: {self.empty_country_count}")
 
         # Save the aggregated features
         print('Aggregrated DataFrame shape:', self.df.shape)
