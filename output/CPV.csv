@@ -1,2 +1,6 @@
-code,year,0. Crop production index,1. Mean air temperature,4. Agriculture land area (% of land area),5. Average precipitation (mm),7. Fertilizer consumption (kilograms per hectare of arable land),13. Population,17. Employment in agriculture (% of total employment) (modeled ILO estimate)
-CPV,2000,99.6,23.27,17.86600496,118.98,2.931818182,458251.0,29.2854404606048
+code,year,0. Crop production index,1. Mean air temperature,4. Agriculture land area (% of land area)_x,4. Agriculture land area (% of land area)_y,5. Average precipitation (mm),7. Fertilizer consumption (kilograms per hectare of arable land)_x,7. Fertilizer consumption (kilograms per hectare of arable land)_y,13. Population_x,13. Population_y,17. Employment in agriculture (% of total employment) (modeled ILO estimate)_x,17. Employment in agriculture (% of total employment) (modeled ILO estimate)_y
+CPV,1997,49.68,23.09,17.86600496,17.86600496,125.37,2.318181818,2.318181818,430654.0,430654.0,32.6455739613823,32.6455739613823
+CPV,1998,52.39,23.14,17.86600496,17.86600496,145.98,2.590909091,2.590909091,440214.0,440214.0,31.6164603587673,31.6164603587673
+CPV,1999,75.22,23.15,17.86600496,17.86600496,148.15,4.25,4.25,449627.0,449627.0,30.5989232839838,30.5989232839838
+CPV,2000,99.6,23.27,17.86600496,17.86600496,118.98,2.931818182,2.931818182,458251.0,458251.0,29.2854404606048,29.2854404606048
+CPV,2001,97.26,23.42,18.36228288,18.36228288,144.98,5.282608696,5.282608696,465958.0,465958.0,28.5888984158666,28.5888984158666

@@ -30,7 +30,7 @@ class FeaturesCompiler:
         # All features will be merged into this DataFrame
         self.df = pd.DataFrame(columns=["code", "year"])
         self.cannot_convert_to_alpha_3 = {}
-        self.country_name_to_alpha_3_map = {
+        self.additional_country_name_to_alpha_3_map = {
             "Ethiopia PDR": "ETH", "China, mainland": "CHN", "China, Taiwan Province of": "TWN"}
         self.empty_country_count = 0
 
@@ -39,10 +39,10 @@ class FeaturesCompiler:
             alpha_3 = pc.countries.lookup(country_name).alpha_3
             return alpha_3
         except LookupError:
-            alpha_3 = self.country_name_to_alpha_3_map.get(
+            alpha_3 = self.additional_country_name_to_alpha_3_map.get(
                 country_name, "ZZZZZ")
             if alpha_3 == "ZZZZZ":
-                self.cannot_convert_to_alpha_3[country_name] = 1
+                self.cannot_convert_to_alpha_3[country_name] = True
             return alpha_3
 
     def alpha_3_to_country_name(self, alpha_3: str):
@@ -65,7 +65,7 @@ class FeaturesCompiler:
                 df = df.loc[:, ~df.columns.str.contains('Unnamed: 68')]
                 columns_to_drop = ["Country Name", "Indicator Name",
                                    "Indicator Code"]
-                df.drop(columns_to_drop, inplace=True, axis=1)
+                df.drop(columns=columns_to_drop, inplace=True)
                 df = pd.melt(df, id_vars=[
                              "Country Code"], value_vars=df.columns[1:], var_name="year", value_name=feature_name)
                 df.rename(columns={"Country Code": "code"}, inplace=True)
@@ -79,8 +79,6 @@ class FeaturesCompiler:
                 df = pd.melt(df, id_vars=[
                              "code"], value_vars=df.columns[1:], var_name="year", value_name=feature_name)
                 df["year"] = df["year"].apply(lambda x: int(x.split("-")[0]))
-                self.df = pd.merge(
-                    self.df, df, on=['code', 'year'], how='outer')
             elif file_origin == FileOrigin.FAO:
                 df = pd.read_csv(file_path)
                 df = df.loc[:, ~df.columns.str.contains('Unnamed: 68')]
@@ -91,10 +89,8 @@ class FeaturesCompiler:
                 columns_to_drop = ["Item Code (CPC)", "Area Code (M49)", "Domain", "Months Code", "Months", "Note",
                                    "Domain Code", "Element Code", "Element", "Item Code", "Item", "Year Code", "Unit", "Flag", "Flag Description"]
                 df.drop(columns=columns_to_drop,
-                        inplace=True, errors='ignore', axis=1)
+                        inplace=True, errors='ignore')
                 df["year"] = df["year"].apply(lambda x: int(x))
-                self.df = pd.merge(
-                    self.df, df, on=["code", "year"], how='outer')
             elif file_origin == FileOrigin.DATABANK_WORLDBANK:
                 df = pd.read_csv(file_path)
                 df.rename(columns={"Country Code": "code"}, inplace=True)
@@ -103,10 +99,13 @@ class FeaturesCompiler:
                 df = pd.melt(df, id_vars=[
                              "code"], value_vars=df.columns[1:], var_name="year", value_name=feature_name)
                 df["year"] = df["year"].apply(lambda x: int(x.split(" [")[0]))
-                self.df = pd.merge(
-                    self.df, df, on=['code', 'year'], how='outer')
             else:
                 raise Exception("Unknown file origin", file_path)
+            df.dropna(inplace=True)
+            logger.debug(f"Feature: {feature_name}, shape: {
+                         df.shape}, years: {df['year'].unique()}")
+            self.df = pd.merge(
+                self.df, df, on=['code', 'year'], how='outer')
             print("Merge successful:", feature_name, file_path, file_origin)
         except Exception as e:
             print("Error reading feature file", file_path, file_origin)
@@ -170,7 +169,11 @@ class FeaturesCompiler:
         # Clean the DataFrame
         self.df.drop(self.df[~self.df["code"].isin(
             country_codes_to_save)].index, inplace=True)
+        numeric_mask = self.df.iloc[:, 2:].applymap(
+            lambda x: pd.to_numeric(x, errors='coerce')).notna().all(axis=1)
+        self.df = self.df[numeric_mask]
         self.df.dropna(inplace=True)
+        # self.df = self.df[self.df["year"] == 2014]
 
         # Sort the columns
         sorted_columns = sorted(self.df.columns, key=lambda x: (0, x) if x in [
@@ -190,15 +193,13 @@ class FeaturesCompiler:
                                      f"{country}.xlsx"), index=False)
             df.to_csv(os.path.join(output_folder_path,
                                    f"{country}.csv"), index=False)
-            self.df = self.df[self.df["year"] == 2014]
         logger.debug(f"Empty country count: {self.empty_country_count}")
 
         # Save the aggregated features
         print('Aggregrated DataFrame shape:', self.df.shape)
         print('Features:', self.df.columns)
-        wrapped_message = textwrap.fill(f"Cannot convert to alpha 3: {
-                                        list(self.cannot_convert_to_alpha_3.keys())}", width=50)
-        logger.debug(wrapped_message)
+        logger.debug(f"Cannot convert to alpha 3: {
+            list(self.cannot_convert_to_alpha_3.keys())}")
 
         self.df.to_excel(os.path.join(output_folder_path,
                                       "aggregrated.xlsx"), index=False)

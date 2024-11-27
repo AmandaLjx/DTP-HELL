@@ -1,2 +1,4 @@
-code,year,0. Crop production index,1. Mean air temperature,4. Agriculture land area (% of land area),5. Average precipitation (mm),7. Fertilizer consumption (kilograms per hectare of arable land),13. Population,17. Employment in agriculture (% of total employment) (modeled ILO estimate)
-SDN,2014,106.91,27.65,59.66004283,235.09,4.200625935,37003245.0,43.2859542809493
+code,year,0. Crop production index,1. Mean air temperature,4. Agriculture land area (% of land area)_x,4. Agriculture land area (% of land area)_y,5. Average precipitation (mm),7. Fertilizer consumption (kilograms per hectare of arable land)_x,7. Fertilizer consumption (kilograms per hectare of arable land)_y,13. Population_x,13. Population_y,17. Employment in agriculture (% of total employment) (modeled ILO estimate)_x,17. Employment in agriculture (% of total employment) (modeled ILO estimate)_y
+SDN,2012,69.56,27.55,59.6712848,59.6712848,253.3,3.327887329,3.327887329,35159792.0,35159792.0,44.549260091789,44.549260091789
+SDN,2013,91.93,27.54,59.66453961,59.66453961,241.01,2.612458392,2.612458392,35990704.0,35990704.0,44.037527119395,44.037527119395
+SDN,2014,106.91,27.65,59.66004283,59.66004283,235.09,4.200625935,4.200625935,37003245.0,37003245.0,43.2859542809493,43.2859542809493
