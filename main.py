@@ -56,7 +56,7 @@ class FeaturesCompiler:
             "4. Agriculture land area (% of land area)": False,
             "5. Average precipitation in depth (mm per year)": True,
             "6. Permanent cropland (% of land area)": False,
-            "7. Fertilizer consumption (kilograms per hectare of arable land)": True,
+            "7. Fertilizer consumption (kilograms per hectare of arable land)": False,
             "8. Annual freshwater withdrawals, total (billion cubic meters)": False,
             "9. Fertilizers by Nutrient (potash K2O)": False,
             "10. PM2.5 air pollution, mean annual exposure (micrograms per cubic meter)": False,
@@ -69,7 +69,7 @@ class FeaturesCompiler:
             "18. Temperature change on land": False,
             "19. Fertilizers by Nutrient (nitrogen N)": False,
             "20. Agriculture land area (sq. km)": True,
-            "22. Fertilizer consumption (kilograms)": False
+            "22. Fertilizer consumption (kilograms)": True
         }
         self.output_folder_path = os.path.join(".", "output")
         self.saved_models = []
