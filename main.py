@@ -8,6 +8,7 @@ import datetime
 import textwrap
 import itertools
 import statsmodels.api as sm
+import random
 
 formatter = logging.Formatter(
     '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -34,7 +35,7 @@ class FeaturesCompiler:
         self.df = pd.DataFrame(columns=["code", "year"])
         self.cannot_convert_to_alpha_3 = {}
         self.additional_country_name_to_alpha_3_map = {
-            "Ethiopia PDR": "ETH", "China, mainland": "CHN", "China, Taiwan Province of": "TWN"}
+            "Ethiopia PDR": "ETH", "China, mainland": "CHN", "China, Taiwan Province of": "TWN", "Democratic Republic of the Congo": "COD", "Sudan (former)": "SDN"}
         self.empty_country_count = 0
         self.country_codes_to_save = [
             "DZA", "AGO", "BEN", "BWA", "BFA", "BDI",
@@ -49,31 +50,48 @@ class FeaturesCompiler:
             "ZMB", "ZWE"
         ]
         self.features_to_save_dict = {
-            "1. Mean air temperature": True,
+            "1. Mean air temperature": False,
             "2. Energy use in agriculture": True,
-            "3. Land area (sq. km)": True,
-            "4. Agriculture land area (% of land area)": True,
-            "5. Average precipitation (mm per year)": True,
-            "6. Permanent cropland (% of land area)": True,
+            "3. Land area (sq. km)": False,
+            "4. Agriculture land area (% of land area)": False,
+            "5. Average precipitation in depth (mm per year)": True,
+            "6. Permanent cropland (% of land area)": False,
             "7. Fertilizer consumption (kilograms per hectare of arable land)": True,
-            "8. Annual freshwater withdrawals, total (billion cubic meters)": True,
-            "9. Fertilizers by Nutrient (potash K2O)": True,
-            "10. PM2.5 air pollution, mean annual exposure (micrograms per cubic meter)": True,
-            "11. Arable land (hectares)": True,
-            "12. Livestock production index (2014-2016 = 100)": True,
+            "8. Annual freshwater withdrawals, total (billion cubic meters)": False,
+            "9. Fertilizers by Nutrient (potash K2O)": False,
+            "10. PM2.5 air pollution, mean annual exposure (micrograms per cubic meter)": False,
+            "11. Arable land (hectares)": False,
             "13. Population": True,
-            "14. Fertilizers by Nutrient (phosphate P2O5)": True,
+            "14. Fertilizers by Nutrient (phosphate P2O5)": False,
             "15. GDP per capita, PPP (current international $)": True,
-            "16. Population living in slums (% of urban population)": True,
-            "17. Employment in agriculture (% of total employment) (modeled ILO estimate)": True,
-            "18. Temperature change on land": True,
-            "19. Fertilizers by Nutrient (nitrogen N)": True,
+            "16. Population living in slums (% of urban population)": False,
+            "17. Employment in agriculture (% of total employment) (modeled ILO estimate)": False,
+            "18. Temperature change on land": False,
+            "19. Fertilizers by Nutrient (nitrogen N)": False,
             "20. Agriculture land area (sq. km)": True,
-            "21. Employment in agriculture": True, }
+            "22. Fertilizer consumption (kilograms)": False
+        }
         self.output_folder_path = os.path.join(".", "output")
         self.saved_models = []
         self.feature_to_df_dict = {}
-        self.rec_merge_count = 0
+        self.feature_to_origin_url_dict = {}
+        self.feature_folder_paths = self.get_all_feature_folder_paths()
+        self.load_features_into_memory()
+
+    def load_features_into_memory(self):
+        feature_to_origin_url_dict = self.map_origin_urls()
+        feature_to_df_dict = {}
+        for feature_folder_path in self.feature_folder_paths:
+            feature_name = os.path.basename(feature_folder_path)
+            if feature_name != "0. Target":
+                if self.features_to_save_dict.get(feature_name, False) == False:
+                    continue
+            feature_path = self.get_feature_file_path(feature_folder_path)
+            df = self.file_to_df(
+                feature_name, feature_path, feature_to_origin_url_dict[feature_name])
+            feature_to_df_dict[feature_name] = df
+        self.feature_to_df_dict = feature_to_df_dict
+        self.feature_to_origin_url_dict = feature_to_origin_url_dict
 
     def country_name_to_alpha_3(self, country_name: str):
         try:
@@ -97,9 +115,6 @@ class FeaturesCompiler:
         try:
             df = None
             feature_name = os.path.basename(os.path.dirname(file_path))
-            if feature_name in self.df.columns:
-                raise Exception(
-                    "Feature already exists in DataFrame:", feature_name)
             file_ext = os.path.splitext(file_path)[1]
             if file_ext == ".xlsx":
                 df = pd.read_excel(file_path)
@@ -144,7 +159,7 @@ class FeaturesCompiler:
             else:
                 raise Exception("Unknown file origin", file_path)
             df.dropna(inplace=True)
-            df = self.clean_dataframe(df)
+            df = self.clean_and_sort_dataframe(df)
             logger.debug(f"Feature: {feature_name}, shape: {
                          df.shape}, years: {df['year'].unique()}")
             print("Converted to feature to df:",
@@ -152,8 +167,8 @@ class FeaturesCompiler:
             return df
         except Exception as e:
             print("Error reading feature file", file_path, file_origin)
-            print("DataFrame shape:", self.df.shape)
-            print("Columns:", self.df.columns)
+            print("DataFrame shape:", df.shape)
+            print("Columns:", df.columns)
             raise e
 
     def find_origin_url(self, folder: str):
@@ -188,7 +203,7 @@ class FeaturesCompiler:
     def get_all_feature_folder_paths(self):
         return [os.path.join(self.features_path, f) for f in os.listdir(self.features_path) if os.path.isdir(os.path.join(self.features_path, f))]
 
-    def clean_dataframe(self, df: pd.DataFrame):
+    def clean_and_sort_dataframe(self, df: pd.DataFrame):
         # Clean the DataFrame
         df.drop(df[~df["code"].isin(
             self.country_codes_to_save)].index, inplace=True)
@@ -205,9 +220,8 @@ class FeaturesCompiler:
         #     df["4. Agriculture land area (% of land area)"] / 100
         # df.drop(columns=["3. Land area (sq. km)",
         #              "4. Agriculture land area (% of land area)"], inplace=True)
-        return df
 
-    def sort_dataframe(self, df: pd.DataFrame):
+        # Sort the columns
         sorted_columns = sorted(df.columns, key=lambda x: (0, x) if x in [
             "code", "year"] else (1, int(x.split(".")[0])))
         df = df[sorted_columns]
@@ -221,7 +235,7 @@ class FeaturesCompiler:
 
     def save_countries(self, df: pd.DataFrame):
         for country in self.country_codes_to_save:
-            df = df.drop(self.df[self.df["code"] != country].index)
+            df = df.drop(df[df["code"] != country].index)
             if df.empty:
                 logger.debug(f"Empty DataFrame for country: {
                              self.alpha_3_to_country_name(country)}")
@@ -233,97 +247,71 @@ class FeaturesCompiler:
                                    f"{country}.csv"), index=False)
         logger.debug(f"Empty country count: {self.empty_country_count}")
 
-    def compile(self):
+    def log_satisfactory_columns(self):
         # Get all feature files and convert them into DataFrames to store into memory
-        features_to_save_list = list(self.features_to_save_dict.keys())
+        features_to_save_list = []
+        for feature in self.features_to_save_dict.keys():
+            if self.features_to_save_dict[feature]:
+                features_to_save_list.append(feature)
         all_combinations = []
         for r in range(1, len(features_to_save_list) + 1):
             combinations = itertools.combinations(features_to_save_list, r)
             all_combinations.extend(combinations)
-        feature_folder_paths = self.get_all_feature_folder_paths()
-        feature_to_origin_url_dict = self.map_origin_urls()
-        for feature_folder_path in feature_folder_paths:
-            feature_name = os.path.basename(feature_folder_path)
-            feature_path = self.get_feature_file_path(feature_folder_path)
-            df = self.file_to_df(
-                feature_name, feature_path, feature_to_origin_url_dict[feature_name])
-            self.feature_to_df_dict[feature_name] = df
+        random.shuffle(all_combinations)
 
         # Get dependent variable
-        target = "0. Crop production index"
-        target_df = self.file_to_df(target, os.path.join(self.features_path, target, "341b2c32-08c8-4358-bdf0-1f2aac604027_Series - Metadata.csv"),
-                                    FileOrigin.DATABANK_WORLDBANK)
-        # count = 0
-        # for comb in all_combinations:
-        #     df = None
-        #     for feature in comb:
-        #         df = pd.merge(target_df, self.feature_to_df_dict[feature], on=[
-        #                       "code", "year"], how="outer")
-        #     df = self.clean_dataframe(df)
-        #     Y = df.iloc[:, [2]]
-        #     X = df.iloc[:, 3:]
-        #     X = sm.add_constant(X)
-        #     model = sm.OLS(Y.astype(float), X.astype(float)).fit()
-        #     if model.rsquared > 0.3:
-        #         self.saved_models.append((model.rsquared, comb, model))
-        #     count += 1
-        #     if count % 10000 == 0:
-        #         print(count)
+        target = "0. Target"
+        target_df = self.file_to_df(target, os.path.join(self.features_path, target, "FAOSTAT_data_en_11-27-2024.csv"),
+                                    FileOrigin.FAO)
+        saved_count = 0
+        for comb in all_combinations:
+            print(comb)
+            df = None
+            for feature in comb:
+                df = pd.merge(target_df, self.feature_to_df_dict[feature], on=[
+                              "code", "year"], how="outer")
+            df = self.clean_and_sort_dataframe(df)
+            Y = df.iloc[:, [2]]
+            X = df.iloc[:, 3:]
+            X = sm.add_constant(X)
+            model = sm.OLS(Y.astype(float), X.astype(float)).fit()
+            if model.rsquared > 0.4 and model.rsquared < 0.6:
+                self.saved_models.append((model.rsquared, comb, model))
+                saved_count += 1
+                print(saved_count)
+                if saved_count >= 10:
+                    break
+        self.saved_models.sort(key=lambda x: x[0], reverse=True)
+        for saved_model in self.saved_models:
+            logger.debug(f"Model: {saved_model[1]}, R^2: {saved_model[0]}")
 
-        left_df = pd.merge(target_df, self.feature_to_df_dict[features_to_save_list[0]], on=[
-            "code", "year"], how="outer")
-        right_df = target_df
-        self.rec(left_df, features_to_save_list, 0, True)
-        self.rec(right_df, features_to_save_list, 0, False)
-
+    def compile(self):
         # Iterate over all feature folders to merge them into a single DataFrame
-        for feature_folder_path in feature_folder_paths:
-            origin_url = self.find_origin_url(feature_folder_path)
+        df = pd.DataFrame(columns=["code", "year"])
+        for feature_folder_path in self.feature_folder_paths:
             for feature_file in os.listdir(feature_folder_path):
                 if feature_file == "url.txt":
                     continue
                 feature_name = os.path.basename(feature_folder_path)
                 if self.features_to_save_dict.get(feature_name, False) == False:
-                    if feature_name != "0. Crop production index":
+                    if feature_name != "0. Target":
                         continue
-                feature_path = os.path.join(feature_folder_path, feature_file)
-                df = self.file_to_df(feature_name, feature_path, origin_url)
-                self.df = pd.merge(
-                    self.df, df, on=['code', 'year'], how='outer')
-                self.df.drop(self.df[self.df["code"] ==
-                             "ZZZZZ"].index, inplace=True)
+                df = pd.merge(
+                    df, self.feature_to_df_dict[feature_name], on=['code', 'year'], how='outer')
+                df.drop(df[df["code"] ==
+                           "ZZZZZ"].index, inplace=True)
+                df = self.clean_and_sort_dataframe(df)
         # Save the aggregated features
-        print('Aggregrated DataFrame shape:', self.df.shape)
-        print('Features:', self.df.columns)
-        self.saved_models.sort(key=lambda x: x[0], reverse=True)
-        logger.debug(f"Saved models: {self.saved_models}")
+        print('Aggregrated DataFrame shape:', df.shape)
+        print('Features:', df.columns)
         logger.debug(f"Cannot convert to alpha 3: {
             list(self.cannot_convert_to_alpha_3.keys())}")
-        # self.df.to_excel(os.path.join(self.output_folder_path,
-        #                               "aggregrated.xlsx"), index=False)
-        # self.df.to_csv(os.path.join(self.output_folder_path,
-        #                             "aggregrated.csv"), index=False)
-
-    def rec(self, df: pd.DataFrame, features: list, curr_idx: int, prev_action_was_merge: bool):
-        if prev_action_was_merge == True:
-            df = self.clean_dataframe(df)
-            Y = df.iloc[:, [2]]
-            X = df.iloc[:, 3:]
-            X = sm.add_constant(X)
-            model = sm.OLS(Y.astype(float), X.astype(float)).fit()
-            if model.rsquared > 0.3:
-                self.saved_models.append(
-                    (model.rsquared, list(X.columns)))
-            self.rec_merge_count += 1
-            if self.rec_merge_count % 1000 == 0:
-                print(self.rec_merge_count)
-        next_idx = curr_idx + 1
-        if next_idx >= len(features):
-            return
-        self.rec(pd.merge(df, self.feature_to_df_dict[features[next_idx]], on=[
-            "code", "year"], how="outer"), features, next_idx, True)
-        self.rec(df, features, next_idx, False)
+        df.to_excel(os.path.join(self.output_folder_path,
+                                 "aggregrated.xlsx"), index=False)
+        df.to_csv(os.path.join(self.output_folder_path,
+                               "aggregrated.csv"), index=False)
 
 
 features_compiler = FeaturesCompiler()
+# features_compiler.log_satisfactory_columns()
 features_compiler.compile()
