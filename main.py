@@ -145,6 +145,7 @@ class FeaturesCompiler:
             "ZMB", "ZWE"
         ]
         features_to_save = {"0. Crop production index": True,
+                            "3. Land area (sq. km)": True,
                             "5. Average precipitation (mm per year)": True,
                             "7. Fertilizer consumption (kilograms per hectare of arable land)": True,
                             "13. Population": True, "4. Agriculture land area (% of land area)": True, "17. Employment in agriculture (% of total employment) (modeled ILO estimate)": True}
@@ -173,8 +174,13 @@ class FeaturesCompiler:
         self.df.iloc[:, 2:] = self.df.iloc[:, 2:].apply(
             pd.to_numeric, errors='coerce')
         self.df.dropna(inplace=True)
+        self.df.drop(self.df[self.df["code"] == "CPV"].index, inplace=True)
         self.df = self.df[self.df["year"] >= 2014]
         self.df = self.df[self.df["year"] <= 2021]
+        self.df["3. Agricultural land area (sq. km)"] = self.df["3. Land area (sq. km)"] * \
+            self.df["4. Agriculture land area (% of land area)"] / 100
+        self.df.drop(columns=["3. Land area (sq. km)",
+                     "4. Agriculture land area (% of land area)"], inplace=True)
 
         # Sort the columns
         sorted_columns = sorted(self.df.columns, key=lambda x: (0, x) if x in [
