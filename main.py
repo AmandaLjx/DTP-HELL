@@ -70,8 +70,6 @@ class FeaturesCompiler:
                              "Country Code"], value_vars=df.columns[1:], var_name="year", value_name=feature_name)
                 df.rename(columns={"Country Code": "code"}, inplace=True)
                 df["year"] = df["year"].apply(lambda x: int(x))
-                self.df = pd.merge(
-                    self.df, df, on=['code', 'year'], how='outer')
             elif file_origin == FileOrigin.CLIMATE_KNOWLEDGE_PORTAL:
                 df = pd.read_excel(file_path)
                 df = df.loc[:, ~df.columns.str.contains('Unnamed: 68')]
@@ -146,8 +144,8 @@ class FeaturesCompiler:
             "SSD", "SDN", "TZA", "TGO", "TUN", "UGA",
             "ZMB", "ZWE"
         ]
-        features_to_save = {"0. Crop production index": True, "1. Mean air temperature": True,
-                            "5. Average precipitation (mm)": True,
+        features_to_save = {"0. Crop production index": True,
+                            "5. Average precipitation (mm per year)": True,
                             "7. Fertilizer consumption (kilograms per hectare of arable land)": True,
                             "13. Population": True, "4. Agriculture land area (% of land area)": True, "17. Employment in agriculture (% of total employment) (modeled ILO estimate)": True}
 
@@ -172,8 +170,11 @@ class FeaturesCompiler:
         numeric_mask = self.df.iloc[:, 2:].applymap(
             lambda x: pd.to_numeric(x, errors='coerce')).notna().all(axis=1)
         self.df = self.df[numeric_mask]
+        self.df.iloc[:, 2:] = self.df.iloc[:, 2:].apply(
+            pd.to_numeric, errors='coerce')
         self.df.dropna(inplace=True)
-        # self.df = self.df[self.df["year"] == 2014]
+        self.df = self.df[self.df["year"] >= 2014]
+        self.df = self.df[self.df["year"] <= 2021]
 
         # Sort the columns
         sorted_columns = sorted(self.df.columns, key=lambda x: (0, x) if x in [

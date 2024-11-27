@@ -1,4 +1,9 @@
-code,year,0. Crop production index,1. Mean air temperature,4. Agriculture land area (% of land area)_x,4. Agriculture land area (% of land area)_y,5. Average precipitation (mm),7. Fertilizer consumption (kilograms per hectare of arable land)_x,7. Fertilizer consumption (kilograms per hectare of arable land)_y,13. Population_x,13. Population_y,17. Employment in agriculture (% of total employment) (modeled ILO estimate)_x,17. Employment in agriculture (% of total employment) (modeled ILO estimate)_y
-SDN,2012,69.56,27.55,59.6712848,59.6712848,253.3,3.327887329,3.327887329,35159792.0,35159792.0,44.549260091789,44.549260091789
-SDN,2013,91.93,27.54,59.66453961,59.66453961,241.01,2.612458392,2.612458392,35990704.0,35990704.0,44.037527119395,44.037527119395
-SDN,2014,106.91,27.65,59.66004283,59.66004283,235.09,4.200625935,4.200625935,37003245.0,37003245.0,43.2859542809493,43.2859542809493
+code,year,0. Crop production index,4. Agriculture land area (% of land area),5. Average precipitation (mm per year),7. Fertilizer consumption (kilograms per hectare of arable land),13. Population,17. Employment in agriculture (% of total employment) (modeled ILO estimate)
+SDN,2014,106.91,59.66004283,250.0,4.200625935,37003245.0,43.2859542809493
+SDN,2015,85.38,59.82327623,250.0,4.474324803,38171178.0,42.6888261552014
+SDN,2016,107.7,59.98650964,250.0,9.38239637,39377169.0,41.8831406735805
+SDN,2017,103.42,60.14974304,250.0,8.338665398,40679828.0,41.3346221091028
+SDN,2018,130.94,60.31297645,250.0,7.103071993,41999059.0,41.1179954476934
+SDN,2019,122.21,60.31297645,250.0,7.103071993,43232093.0,40.8842873283954
+SDN,2020,128.05,60.31308351,250.0,7.103071993,44440486.0,41.1455638396963
+SDN,2021,116.62,60.31308351,250.0,7.103071993,45657202.0,40.9368070400243
