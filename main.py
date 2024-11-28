@@ -239,7 +239,7 @@ class FeaturesCompiler:
             "22. Fertilizer consumption (kilograms)": False
         }
 
-        # Country name to alpha 3 code mapping
+        # Country name and alpha 3 mapping
         self.country_name_to_alpha_3_dict = {
             "Ethiopia PDR": "ETH", "China, mainland": "CHN",
             "China, Taiwan Province of": "TWN", "Democratic Republic of the Congo": "COD", "Sudan (former)": "SDN",
@@ -290,6 +290,37 @@ class FeaturesCompiler:
             "Senegal": "SEN",
             "Sierra Leone": "SLE",
             "Togo": "TGO"
+        }
+        self.alpha_3_to_country_name_dict = {
+            # East Africa
+            "MOZ": "Mozambique",  # Mozambique
+            "RWA": "Rwanda",  # Rwanda
+            "TZA": "Tanzania",  # Tanzania
+            "UGA": "Uganda",  # Uganda
+
+            # Central Africa
+            "AGO": "Angola",  # Angola
+            "CMR": "Cameroon",  # Cameroon
+            "CAF": "Central African Republic",  # Central African Republic
+            "COG": "Congo",  # Congo
+            "GNQ": "Equatorial Guinea",  # Equatorial Guinea
+            "GAB": "Gabon",  # Gabon
+
+            # West Africa
+            "BEN": "Benin",  # Benin
+            "BFA": "Burkina Faso",  # Burkina Faso
+            "CIV": "Côte d'Ivoire",  # Côte d'Ivoire
+            "GIN": "Guinea",  # Guinea
+            "GNB": "Guinea-Bissau",  # Guinea-Bissau
+            "LBR": "Liberia",  # Liberia
+            "MLI": "Mali",  # Mali
+            "NER": "Niger",  # Niger
+            "SLE": "Sierra Leone",  # Sierra Leone
+            "TGO": "Togo",  # Togo
+
+            # Southern Africa
+            "MWI": "Malawi",  # Malawi
+            "ZMB": "Zambia",  # Zambia
         }
 
         # Caching purposes to avoid re-reading the same files
@@ -473,6 +504,12 @@ class FeaturesCompiler:
         # Final cleaning
         df = self.clean_and_sort_dataframe(df)
         df.drop(df[df["0. Target"] == 0].index, inplace=True)
+        df["code"] = df["code"].apply(
+            lambda x: self.alpha_3_to_country_name_dict[x])
+        df.rename(columns={"code": "Country"}, inplace=True)
+        df.rename(columns={"year": "Year"}, inplace=True)
+        df.rename(
+            columns={"0. Target": "Casava production (tons)"}, inplace=True)
 
         # Logging purposes
         print('Aggregrated DataFrame shape:', df.shape)
