@@ -506,7 +506,7 @@ class FeaturesCompiler:
         df.drop(df[df["0. Target"] == 0].index, inplace=True)
         df["code"] = df["code"].apply(
             lambda x: self.alpha_3_to_country_name_dict[x])
-        df.rename(columns={"code": "Country"}, inplace=True)
+        df.rename(columns={"code": "Country Name"}, inplace=True)
         df.rename(columns={"year": "Year"}, inplace=True)
         df.rename(
             columns={"0. Target": "Casava production (tons)"}, inplace=True)
