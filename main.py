@@ -1,6 +1,7 @@
 import pandas as pd
 import os
 from enum import Enum
+import statsmodels.api as sm
 # import logging
 # import datetime
 
@@ -14,6 +15,173 @@ from enum import Enum
 
 
 no_alpha_3_country_string = "ZZZZZ"
+
+all_african_countries = [
+    # North Africa
+    "DZA",  # Algeria
+    "EGY",  # Egypt
+    "LBY",  # Libya
+    "MAR",  # Morocco
+    "SDN",  # Sudan
+    "TUN",  # Tunisia
+
+    # South Africa
+    "BWA",  # Botswana
+    "LSO",  # Lesotho
+    "NAM",  # Namibia
+    "ZAF",  # South Africa
+    "SWZ",  # Eswatini
+    "ZMB",  # Zambia
+    "ZWE",  # Zimbabwe
+
+    # West Africa
+    "BEN",  # Benin
+    "BFA",  # Burkina Faso
+    "CPV",  # Cabo Verde
+    "CIV",  # Côte d'Ivoire
+    "GMB",  # Gambia
+    "GHA",  # Ghana
+    "GIN",  # Guinea
+    "GNB",  # Guinea-Bissau
+    "LBR",  # Liberia
+    "MLI",  # Mali
+    "MRT",  # Mauritania
+    "NER",  # Niger
+    "NGA",  # Nigeria
+    "SEN",  # Senegal
+    "SLE",  # Sierra Leone
+    "TGO",  # Togo
+
+    # East Africa
+    "BDI",  # Burundi
+    "COM",  # Comoros
+    "DJI",  # Djibouti
+    "ERI",  # Eritrea
+    "ETH",  # Ethiopia
+    "KEN",  # Kenya
+    "MDG",  # Madagascar
+    "MWI",  # Malawi
+    "MOZ",  # Mozambique
+    "RWA",  # Rwanda
+    "SOM",  # Somalia
+    "SSD",  # South Sudan
+    "TZA",  # Tanzania
+    "UGA",  # Uganda
+
+    # Central Africa
+    "AGO",  # Angola
+    "CMR",  # Cameroon
+    "CAF",  # Central African Republic
+    "TCD",  # Chad
+    "COG",  # Congo
+    "GNQ",  # Equatorial Guinea
+    "GAB",  # Gabon
+    "STP",  # Sao Tome and Principe
+
+    # Others
+    "MUS",  # Mauritius
+    "SYC"   # Seychelles
+]
+
+rural = [
+    # East Africa
+    "BDI",  # Burundi
+    "COM",  # Comoros
+    "DJI",  # Djibouti
+    "ERI",  # Eritrea
+    "ETH",  # Ethiopia
+    "KEN",  # Kenya
+    "MWI",  # Malawi
+    "MOZ",  # Mozambique
+    "RWA",  # Rwanda
+    "SOM",  # Somalia
+    "SSD",  # South Sudan
+    "TZA",  # Tanzania
+    "UGA",  # Uganda
+
+    # Central Africa
+    "AGO",  # Angola
+    "CMR",  # Cameroon
+    "CAF",  # Central African Republic
+    "TCD",  # Chad
+    "COG",  # Congo
+    "GNQ",  # Equatorial Guinea
+    "GAB",  # Gabon
+    "STP",  # Sao Tome and Principe
+
+    # West Africa
+    "BEN",  # Benin
+    "BFA",  # Burkina Faso
+    "CIV",  # Côte d'Ivoire
+    "GIN",  # Guinea
+    "GNB",  # Guinea-Bissau
+    "LBR",  # Liberia
+    "MLI",  # Mali
+    "NER",  # Niger
+    "SEN",  # Senegal
+    "SLE",  # Sierra Leone
+    "TGO",  # Togo
+
+    # Southern Africa
+    "MWI",  # Malawi
+    "ZMB",  # Zambia
+    "ZWE",  # Zimbabwe
+]
+
+wheat_rural = [
+    # East Africa
+    # Ethiopia - Significant wheat producer in East Africa, particularly in the highlands.
+    "ETH",
+    # Kenya - Some wheat production, though not as significant as Ethiopia.
+    # "KEN",
+    # Tanzania - Produces wheat in specific regions, such as the northern highlands.
+    # "TZA",
+    # "UGA",  # Uganda - Some wheat production in cooler highland areas.
+
+    # Southern Africa
+    # "ZMB",  # Zambia - Produces wheat during the dry season using irrigation.
+    # Zimbabwe - Wheat production occurs but has fluctuated due to economic challenges.
+    # "ZWE",
+
+    # Central Africa
+    # Central African Republic - Small-scale wheat production in cooler regions.
+    # "CAF",
+
+    # West Africa
+    # (Wheat production is minimal in West Africa due to unsuitable climate; excluded here.)
+]
+
+cassava_rural = [
+    # East Africa
+    "MOZ",  # Mozambique
+    "RWA",  # Rwanda
+    "TZA",  # Tanzania
+    "UGA",  # Uganda
+
+    # Central Africa
+    "AGO",  # Angola
+    "CMR",  # Cameroon
+    "CAF",  # Central African Republic
+    "COG",  # Congo
+    "GNQ",  # Equatorial Guinea
+    "GAB",  # Gabon
+
+    # West Africa
+    "BEN",  # Benin
+    "BFA",  # Burkina Faso
+    "CIV",  # Côte d'Ivoire
+    "GIN",  # Guinea
+    "GNB",  # Guinea-Bissau
+    "LBR",  # Liberia
+    "MLI",  # Mali
+    "NER",  # Niger
+    "SLE",  # Sierra Leone
+    "TGO",  # Togo
+
+    # Southern Africa
+    "MWI",  # Malawi
+    "ZMB",  # Zambia
+]
 
 
 class FileOrigin(Enum):
@@ -34,40 +202,40 @@ class FeaturesCompiler:
         # Logging purposes
         self.cannot_convert_to_alpha_3 = {}
 
-        # Narrowing what data to save
-        self.country_codes_to_save = [
-            "DZA", "AGO", "BEN", "BWA", "BFA", "BDI",
-            "CPV", "CMR", "CAF", "TCD", "COM",
-            "COG", "DJI", "EGY", "GNQ", "ERI",
-            "SWZ", "ETH", "GAB", "GMB", "GHA", "GIN",
-            "GNB", "KEN", "LSO", "LBR", "LBY", "MDG",
-            "MWI", "MLI", "MRT", "MUS", "MAR", "MOZ",
-            "NAM", "NER", "NGA", "RWA", "STP",
-            "SEN", "SYC", "SLE", "SOM", "ZAF",
-            "SSD", "SDN", "TZA", "TGO", "TUN", "UGA",
-            "ZMB", "ZWE"
-        ]
+        # These are for rural less developed countries
+        self.country_codes_to_save = cassava_rural
+
         self.features_to_save_dict = {
             "0. Target": True,
             "1. Mean air temperature": False,
-            "2. Energy use in agriculture": True,
+            "2. Energy use in agriculture": False,
+            # -0.3955 coef, 0.433 p-value
             "3. Land area (sq. km)": True,
+            # 0.296 p-value
             "4. Agriculture land area (% of land area)": True,
             "5. Average precipitation in depth (mm per year)": True,
+            # -6.067e+04 coef
             "6. Permanent cropland (% of land area)": False,
-            "7. Fertilizer consumption (kilograms per hectare of arable land)": True,
+            # Causes 2. Energy use in agriculture to have 0.937 p-value
+            "7. Fertilizer consumption (kilograms per hectare of arable land)": False,
             "8. Annual freshwater withdrawals, total (billion cubic meters)": False,
             "9. Fertilizers by Nutrient (potash K2O)": False,
             "10. PM2.5 air pollution, mean annual exposure (micrograms per cubic meter)": False,
-            "11. Arable land (hectares)": True,
+            # -0.1307 coef
+            "11. Arable land (hectares)": False,
             "13. Population": True,
             "14. Fertilizers by Nutrient (phosphate P2O5)": False,
-            "15. GDP per capita, PPP (current international $)": True,
+            "15. GDP per capita, PPP (current international $)": False,
             "16. Population living in slums (% of urban population)": False,
             "17. Employment in agriculture (% of total employment) (modeled ILO estimate)": False,
             "18. Temperature change on land": False,
-            "19. Fertilizers by Nutrient (nitrogen N)": False,
+            # Causes 2. Energy use in agriculture to have -2736.7221 coef
+            "19. Fertilizers by Nutrient (nitrogen N)": True,
+            # -1.2147 coef
             "20. Agriculture land area (sq. km)": False,
+            # -54.4968 coef 0.155 p-value
+            "21. Permanent cropland (sq. km)"
+            # Causes 2. Energy use in agriculture to have -1268.5523 coefficient
             "22. Fertilizer consumption (kilograms)": False
         }
 
@@ -262,9 +430,9 @@ class FeaturesCompiler:
         # Drop rows with NaN values
         df = df.dropna()
 
-        # Only keep years 2014-2021
+        # Only keep years after 2014
         df = df[df["year"] >= 2014]
-        df = df[df["year"] <= 2021]
+        df = df[df["year"] <= 2024]
 
         # Sort the columns
         sorted_columns = sorted(df.columns, key=lambda x: (0, x) if x in [
@@ -283,7 +451,7 @@ class FeaturesCompiler:
                 df, self.feature_to_df_dict[feature_name], on=['code', 'year'], how='outer')
             df.drop(df[df["code"] ==
                        no_alpha_3_country_string].index, inplace=True)
-            df = self.clean_and_sort_dataframe(df)
+            # df = self.clean_and_sort_dataframe(df)
 
         # Obtain derived columns
         if "3. Land area (sq. km)" in df.columns and "4. Agriculture land area (% of land area)" in df.columns:
@@ -296,9 +464,15 @@ class FeaturesCompiler:
                 df["7. Fertilizer consumption (kilograms per hectare of arable land)"]
             df.drop(columns=["11. Arable land (hectares)",
                              "7. Fertilizer consumption (kilograms per hectare of arable land)"], inplace=True)
+        if "3. Land area (sq. km)" in df.columns and "6. Permanent cropland (% of land area)" in df.columns:
+            df["21. Permanent cropland (sq. km)"] = df["3. Land area (sq. km)"] * \
+                df["6. Permanent cropland (% of land area)"] / 100
+            df.drop(columns=["3. Land area (sq. km)",
+                             "6. Permanent cropland (% of land area)"], inplace=True)
 
         # Final cleaning
         df = self.clean_and_sort_dataframe(df)
+        df.drop(df[df["0. Target"] == 0].index, inplace=True)
 
         # Logging purposes
         print('Aggregrated DataFrame shape:', df.shape)
@@ -312,6 +486,13 @@ class FeaturesCompiler:
         df.to_csv(os.path.join(self.output_folder_path,
                                "aggregrated.csv"), index=False)
 
+        X = df.iloc[:, 3:]
+        Y = df.iloc[:, 2]
+
+        X = sm.add_constant(X)
+
+        model = sm.OLS(Y, X).fit()
+        print(model.summary())
         return df
 
 
