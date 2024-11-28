@@ -1,7 +1,7 @@
 import pandas as pd
 import os
 from enum import Enum
-import statsmodels.api as sm
+# import statsmodels.api as sm
 # import logging
 # import datetime
 
@@ -126,29 +126,6 @@ rural = [
     "MWI",  # Malawi
     "ZMB",  # Zambia
     "ZWE",  # Zimbabwe
-]
-
-wheat_rural = [
-    # East Africa
-    # Ethiopia - Significant wheat producer in East Africa, particularly in the highlands.
-    "ETH",
-    # Kenya - Some wheat production, though not as significant as Ethiopia.
-    # "KEN",
-    # Tanzania - Produces wheat in specific regions, such as the northern highlands.
-    # "TZA",
-    # "UGA",  # Uganda - Some wheat production in cooler highland areas.
-
-    # Southern Africa
-    # "ZMB",  # Zambia - Produces wheat during the dry season using irrigation.
-    # Zimbabwe - Wheat production occurs but has fluctuated due to economic challenges.
-    # "ZWE",
-
-    # Central Africa
-    # Central African Republic - Small-scale wheat production in cooler regions.
-    # "CAF",
-
-    # West Africa
-    # (Wheat production is minimal in West Africa due to unsuitable climate; excluded here.)
 ]
 
 cassava_rural = [
@@ -323,9 +300,9 @@ class FeaturesCompiler:
             "ZMB": "Zambia",  # Zambia
         }
 
-        # Caching purposes to avoid re-reading the same files
+        # Caching purposes to avoid re-reading the same files if ever we decide to make multiple csvs for some reason
         self.feature_to_origin_url_dict = self.map_origin_urls()
-        self.feature_to_df_dict = {}
+        self.feature_name_to_df_dict = {}
 
         # Loads all features int self.feature_to_df_dict, accessible by feature name like 1. Mean air temperature except for 0. Target
         self.load_features_into_memory()
@@ -344,7 +321,7 @@ class FeaturesCompiler:
             feature_path = self.get_feature_file_path(feature_folder_path)
             df = self.feature_file_to_df(
                 feature_name, feature_path, self.feature_to_origin_url_dict[feature_name])
-            self.feature_to_df_dict[feature_name] = df
+            self.feature_name_to_df_dict[feature_name] = df
 
     def country_name_to_alpha_3(self, country_name: str):
         alpha_3 = self.country_name_to_alpha_3_dict.get(country_name)
@@ -479,10 +456,9 @@ class FeaturesCompiler:
             if self.features_to_save_dict.get(feature_name, False) == False:
                 continue
             df = pd.merge(
-                df, self.feature_to_df_dict[feature_name], on=['code', 'year'], how='outer')
+                df, self.feature_name_to_df_dict[feature_name], on=['code', 'year'], how='outer')
             df.drop(df[df["code"] ==
                        no_alpha_3_country_string].index, inplace=True)
-            # df = self.clean_and_sort_dataframe(df)
 
         # Obtain derived columns
         if "3. Land area (sq. km)" in df.columns and "4. Agriculture land area (% of land area)" in df.columns:
@@ -523,13 +499,6 @@ class FeaturesCompiler:
         df.to_csv(os.path.join(self.output_folder_path,
                                "aggregrated.csv"), index=False)
 
-        X = df.iloc[:, 3:]
-        Y = df.iloc[:, 2]
-
-        X = sm.add_constant(X)
-
-        model = sm.OLS(Y, X).fit()
-        print(model.summary())
         return df
 
 
