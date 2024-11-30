@@ -1,8 +1,8 @@
 import pandas as pd
 import os
 from enum import Enum
-import numpy as np
-import statsmodels.api as sm
+# import numpy as np
+# import statsmodels.api as sm
 # import logging
 # import datetime
 
@@ -522,11 +522,11 @@ class FeaturesCompiler:
         df.to_csv(os.path.join(self.output_folder_path,
                                "aggregrated.csv"), index=False)
 
-        y = df.iloc[:, 2]
-        X = df.iloc[:, 3:]
-        X = sm.add_constant(X)
-        model = sm.OLS(y, X).fit()
-        print(model.summary())
+        # y = df.iloc[:, 2]
+        # X = df.iloc[:, 3:]
+        # X = sm.add_constant(X)
+        # model = sm.OLS(y, X).fit()
+        # print(model.summary())
 
         return df
 
