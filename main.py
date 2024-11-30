@@ -1,7 +1,8 @@
 import pandas as pd
 import os
 from enum import Enum
-# import statsmodels.api as sm
+import numpy as np
+import statsmodels.api as sm
 # import logging
 # import datetime
 
@@ -129,13 +130,13 @@ rural = [
 ]
 
 cassava_rural = [
-    # East Africa
+    # # East Africa
     "MOZ",  # Mozambique
     "RWA",  # Rwanda
     "TZA",  # Tanzania
     "UGA",  # Uganda
 
-    # Central Africa
+    # # Central Africa
     "AGO",  # Angola
     "CMR",  # Cameroon
     "CAF",  # Central African Republic
@@ -143,7 +144,7 @@ cassava_rural = [
     "GNQ",  # Equatorial Guinea
     "GAB",  # Gabon
 
-    # West Africa
+    # # West Africa
     "BEN",  # Benin
     "BFA",  # Burkina Faso
     "CIV",  # Côte d'Ivoire
@@ -154,8 +155,10 @@ cassava_rural = [
     "NER",  # Niger
     "SLE",  # Sierra Leone
     "TGO",  # Togo
+    # "NGA",  # Nigeria, troublesome country
+    # "GHA",  # Ghana, troublesome country
 
-    # Southern Africa
+    # # Southern Africa
     "MWI",  # Malawi
     "ZMB",  # Zambia
 ]
@@ -182,6 +185,7 @@ class FeaturesCompiler:
         # These are for rural less developed countries
         self.country_codes_to_save = cassava_rural
 
+        # Narrowing what features to save
         self.features_to_save_dict = {
             "0. Target": True,
             "1. Mean air temperature": False,
@@ -189,7 +193,7 @@ class FeaturesCompiler:
             # -0.3955 coef, 0.433 p-value
             "3. Land area (sq. km)": True,
             # 0.296 p-value
-            "4. Agriculture land area (% of land area)": True,
+            "4. Agricultural land area (% of land area)": True,
             "5. Average precipitation in depth (mm per year)": True,
             # -6.067e+04 coef
             "6. Permanent cropland (% of land area)": False,
@@ -209,11 +213,14 @@ class FeaturesCompiler:
             # Causes 2. Energy use in agriculture to have -2736.7221 coef
             "19. Fertilizers by Nutrient (nitrogen N)": True,
             # -1.2147 coef
-            "20. Agriculture land area (sq. km)": False,
+            "20. Agricultural land area (sq. km)": False,
             # -54.4968 coef 0.155 p-value
-            "21. Permanent cropland (sq. km)"
+            "21. Permanent cropland (sq. km)": False,
             # Causes 2. Energy use in agriculture to have -1268.5523 coefficient
-            "22. Fertilizer consumption (kilograms)": False
+            "22. Fertilizer consumption (kilograms)": False,
+            "30. Grants, excluding technical cooperation (BoP, current US$)": False,
+            "31. Net ODA received per capita (current US$)": False,
+            "32. Net official development assistance received (current US$)": False
         }
 
         # Country name and alpha 3 mapping
@@ -298,10 +305,13 @@ class FeaturesCompiler:
             # Southern Africa
             "MWI": "Malawi",  # Malawi
             "ZMB": "Zambia",  # Zambia
+
+            "NGA": "Nigeria",  # Nigeria
+            "GHA": "Ghana",  # Ghana
         }
 
         # Caching purposes to avoid re-reading the same files if ever we decide to make multiple csvs for some reason
-        self.feature_to_origin_url_dict = self.map_origin_urls()
+        self.feature_name_to_origin_url_dict = self.map_origin_urls()
         self.feature_name_to_df_dict = {}
 
         # Loads all features int self.feature_to_df_dict, accessible by feature name like 1. Mean air temperature except for 0. Target
@@ -320,7 +330,7 @@ class FeaturesCompiler:
                 continue
             feature_path = self.get_feature_file_path(feature_folder_path)
             df = self.feature_file_to_df(
-                feature_name, feature_path, self.feature_to_origin_url_dict[feature_name])
+                feature_name, feature_path, self.feature_name_to_origin_url_dict[feature_name])
             self.feature_name_to_df_dict[feature_name] = df
 
     def country_name_to_alpha_3(self, country_name: str):
@@ -461,31 +471,44 @@ class FeaturesCompiler:
                        no_alpha_3_country_string].index, inplace=True)
 
         # Obtain derived columns
-        if "3. Land area (sq. km)" in df.columns and "4. Agriculture land area (% of land area)" in df.columns:
-            df["20. Agriculture land area (sq. km)"] = df["3. Land area (sq. km)"] * \
-                df["4. Agriculture land area (% of land area)"] / 100
+        if "3. Land area (sq. km)" in df.columns and "4. Agricultural land area (% of land area)" in df.columns:
+            df["20. Agricultural land area (sq. km)"] = df["3. Land area (sq. km)"] * \
+                df["4. Agricultural land area (% of land area)"] / 100
             df.drop(columns=["3. Land area (sq. km)",
-                             "4. Agriculture land area (% of land area)"], inplace=True)
-        if "11. Arable land (hectares)" in df.columns and "7. Fertilizer consumption (kilograms per hectare of arable land)" in df.columns:
-            df["22. Fertilizer consumption (kilograms)"] = df["11. Arable land (hectares)"] * \
-                df["7. Fertilizer consumption (kilograms per hectare of arable land)"]
-            df.drop(columns=["11. Arable land (hectares)",
-                             "7. Fertilizer consumption (kilograms per hectare of arable land)"], inplace=True)
+                             "4. Agricultural land area (% of land area)"], inplace=True)
         if "3. Land area (sq. km)" in df.columns and "6. Permanent cropland (% of land area)" in df.columns:
             df["21. Permanent cropland (sq. km)"] = df["3. Land area (sq. km)"] * \
                 df["6. Permanent cropland (% of land area)"] / 100
             df.drop(columns=["3. Land area (sq. km)",
                              "6. Permanent cropland (% of land area)"], inplace=True)
+        if "11. Arable land (hectares)" in df.columns and "7. Fertilizer consumption (kilograms per hectare of arable land)" in df.columns:
+            df["22. Fertilizer consumption (kilograms)"] = df["11. Arable land (hectares)"] * \
+                df["7. Fertilizer consumption (kilograms per hectare of arable land)"]
+            df.drop(columns=["11. Arable land (hectares)",
+                             "7. Fertilizer consumption (kilograms per hectare of arable land)"], inplace=True)
+        if "31. Net ODA received per capita (current US$)" in df.columns and "13. Population" in df.columns:
+            df["23. Net ODA received (current US$)"] = df["31. Net ODA received per capita (current US$)"] * \
+                df["13. Population"]
+            df.drop(
+                columns=["31. Net ODA received per capita (current US$)"], inplace=True)
+        if "15. GDP per capita, PPP (current international $)" in df.columns and "13. Population" in df.columns:
+            df["24. GDP (current international $)"] = df["15. GDP per capita, PPP (current international $)"] * \
+                df["13. Population"]
+            df.drop(
+                columns=["15. GDP per capita, PPP (current international $)"], inplace=True)
+
+        # if "19. Fertilizers by Nutrient (nitrogen N)" in df.columns:
+        #     df['19. Fertilizers by Nutrient (nitrogen N)'] = np.log(
+        #         df['19. Fertilizers by Nutrient (nitrogen N)'] + 1)
 
         # Final cleaning
         df = self.clean_and_sort_dataframe(df)
+        df = df[df["0. Target"] > 500000]
         df.drop(df[df["0. Target"] == 0].index, inplace=True)
         df["code"] = df["code"].apply(
             lambda x: self.alpha_3_to_country_name_dict[x])
-        df.rename(columns={"code": "Country Name"}, inplace=True)
-        df.rename(columns={"year": "Year"}, inplace=True)
-        df.rename(
-            columns={"0. Target": "Casava production (tons)"}, inplace=True)
+        df.rename(columns={"code": "Country Name", "year": "Year",
+                  "0. Target": "Casava production (tons)"}, inplace=True)
 
         # Logging purposes
         print('Aggregrated DataFrame shape:', df.shape)
@@ -498,6 +521,12 @@ class FeaturesCompiler:
                                  "aggregrated.xlsx"), index=False)
         df.to_csv(os.path.join(self.output_folder_path,
                                "aggregrated.csv"), index=False)
+
+        y = df.iloc[:, 2]
+        X = df.iloc[:, 3:]
+        X = sm.add_constant(X)
+        model = sm.OLS(y, X).fit()
+        print(model.summary())
 
         return df
 
